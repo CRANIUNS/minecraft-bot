@@ -25,7 +25,7 @@ function sendMessage(bot, message) {
  * @param {string} message
  */
 function handleChatCommand(bot, username, message) {
-    if (!message.startsWith('/!')) return;
+    if (!message.startsWith('#!')) return;
 
     const parts = message.slice(2).split(' ');
     const command = parts[0].toLowerCase();
