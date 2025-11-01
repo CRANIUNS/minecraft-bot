@@ -1,23 +1,30 @@
 /**
  * bot_commands.js
  * 
- * Módulo de comandos do bot para Minecraft 1.20.1
- * Compatível com mineflayer e mineflayer-pathfinder.
+ * Controle de comandos do bot Minecraft (Mineflayer 1.20.1)
  */
 
-const mineflayer = require('mineflayer');
-const { pathfinder, Movements, goals: { GoalBlock, GoalNear } } = require('mineflayer-pathfinder');
-const Vec3 = require('vec3').Vec3;
+const { pathfinder, goals: { GoalBlock, GoalNear } } = require('mineflayer-pathfinder');
 
 let isMining = false;
 let miningBlock = null;
-let miningType = '1x2'; // padrão
+let miningType = '1x2';
 
+/**
+ * Envia mensagem ao chat do servidor ou console.
+ * @param {import('mineflayer').Bot} bot 
+ * @param {string} msg 
+ */
 function sendMessage(bot, msg) {
     if (bot.chat) bot.chat(msg);
     else console.log(msg);
 }
 
+/**
+ * Inicia mineração em 1x2 ou 3x3.
+ * @param {import('mineflayer').Bot} bot 
+ * @param {'1x2'|'3x3'} type 
+ */
 function startMining(bot, type = '1x2') {
     if (isMining) {
         sendMessage(bot, '⚠️ Já estou minerando!');
@@ -38,6 +45,10 @@ function startMining(bot, type = '1x2') {
     mineLoop(bot);
 }
 
+/**
+ * Para mineração.
+ * @param {import('mineflayer').Bot} bot 
+ */
 function stopMining(bot) {
     if (!isMining) {
         sendMessage(bot, '⛔ Não estou minerando no momento.');
@@ -48,6 +59,10 @@ function stopMining(bot) {
     sendMessage(bot, '✅ Mineração interrompida.');
 }
 
+/**
+ * Loop de mineração automático.
+ * @param {import('mineflayer').Bot} bot 
+ */
 async function mineLoop(bot) {
     if (!isMining || !miningBlock) return;
 
@@ -58,8 +73,8 @@ async function mineLoop(bot) {
         for (let dx = -radius; dx <= radius; dx++) {
             for (let dy = 0; dy <= 1; dy++) {
                 for (let dz = -radius; dz <= radius; dz++) {
-                    const blockPos = miningBlock.position.offset(dx, dy, dz);
-                    const block = bot.blockAt(blockPos);
+                    const pos = miningBlock.position.offset(dx, dy, dz);
+                    const block = bot.blockAt(pos);
 
                     if (block && bot.canDigBlock(block) && block.name !== 'air' && block.hardness !== null && block.hardness !== -1) {
                         blocksToMine.push(block);
@@ -69,20 +84,20 @@ async function mineLoop(bot) {
         }
 
         if (blocksToMine.length === 0) {
-            // 🔄 Avança dinamicamente na direção atual do bot
+            // Avança na direção que o bot está olhando
             const yaw = bot.entity.yaw;
             const dx = Math.round(Math.sin(yaw));
             const dz = Math.round(Math.cos(yaw));
-            const nextBlockPos = miningBlock.position.offset(dx, 0, dz);
+            const nextPos = miningBlock.position.offset(dx, 0, dz);
 
-            miningBlock = bot.blockAt(nextBlockPos);
+            miningBlock = bot.blockAt(nextPos);
             if (!miningBlock) {
                 sendMessage(bot, '⚠️ Fim da mineração: sem blocos à frente.');
                 stopMining(bot);
                 return;
             }
 
-            const goal = new GoalBlock(nextBlockPos.x, nextBlockPos.y, nextBlockPos.z);
+            const goal = new GoalBlock(nextPos.x, nextPos.y, nextPos.z);
             await bot.pathfinder.goto(goal);
             setImmediate(() => mineLoop(bot));
             return;
@@ -96,6 +111,7 @@ async function mineLoop(bot) {
             const goal = new GoalNear(block.position.x, block.position.y, block.position.z, 1);
             await bot.pathfinder.goto(goal);
 
+            // Equipar ferramenta adequada
             try {
                 if (bot.canDigBlock(block) && (!bot.heldItem || !bot.heldItem.name.includes('pickaxe'))) {
                     const tool = bot.inventory.items().find(i =>
@@ -103,8 +119,8 @@ async function mineLoop(bot) {
                     );
                     if (tool) await bot.equip(tool, 'hand');
                 }
-            } catch (e) {
-                console.warn('⚠️ Falha ao equipar ferramenta:', e.message);
+            } catch (err) {
+                console.warn('⚠️ Falha ao equipar ferramenta:', err.message);
             }
 
             sendMessage(bot, `⛏️ Minerando bloco ${block.name} em X:${block.position.x} Y:${block.position.y} Z:${block.position.z}`);
@@ -123,30 +139,44 @@ async function mineLoop(bot) {
     }
 }
 
+/**
+ * Segue jogador específico.
+ * @param {import('mineflayer').Bot} bot 
+ * @param {string} username 
+ */
 async function followPlayer(bot, username) {
     const target = bot.players[username]?.entity;
     if (!target) {
         sendMessage(bot, '❌ Jogador não encontrado.');
         return;
     }
-
     const goal = new GoalNear(target.position.x, target.position.y, target.position.z, 1);
     bot.pathfinder.setGoal(goal);
     sendMessage(bot, `👣 Seguindo ${username}...`);
 }
 
+/**
+ * Exibe status do bot.
+ * @param {import('mineflayer').Bot} bot 
+ */
 function showStatus(bot) {
     const pos = bot.entity.position;
     sendMessage(bot, `📍 Posição: X:${pos.x.toFixed(1)} Y:${pos.y.toFixed(1)} Z:${pos.z.toFixed(1)} | Mineração: ${isMining ? 'Ativa' : 'Inativa'}`);
 }
 
-function handleChat(bot, username, message) {
+/**
+ * Processa comandos do chat.
+ * @param {import('mineflayer').Bot} bot 
+ * @param {string} username 
+ * @param {string} message 
+ */
+function handleChatCommand(bot, username, message) {
     if (username === bot.username) return;
 
     const args = message.split(' ');
-    const command = args[0].toLowerCase();
+    const cmd = args[0].toLowerCase();
 
-    switch (command) {
+    switch (cmd) {
         case '#minerar':
             startMining(bot, args[1] || '1x2');
             break;
@@ -165,7 +195,7 @@ function handleChat(bot, username, message) {
 }
 
 module.exports = {
-    handleChat,
+    handleChatCommand,
     startMining,
     stopMining,
     followPlayer,
