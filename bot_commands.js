@@ -25,9 +25,9 @@ function sendMessage(bot, message) {
  * @param {string} message
  */
 function handleChatCommand(bot, username, message) {
-    if (!message.startsWith('/!')) return;
+    if (!message.startsWith('#')) return;
 
-    const parts = message.slice(2).split(' ');
+    const parts = message.slice(1).split(' ');
     const command = parts[0].toLowerCase();
     const args = parts.slice(1);
 
@@ -43,9 +43,10 @@ function handleChatCommand(bot, username, message) {
     }
 
     if (!isAuthenticated) {
-        sendMessage(bot, `⚠️ ${username}, você precisa se autenticar primeiro. Use /!senha <sua_senha>`);
+        sendMessage(bot, `⚠️ ${username}, você precisa se autenticar primeiro. Use #senha <sua_senha>`);
         return;
     }
+
 
     // --- Comandos de Automação ---
     switch (command) {
@@ -65,7 +66,7 @@ function handleChatCommand(bot, username, message) {
             handleHelpCommand(bot, username);
             break;
         default:
-            sendMessage(bot, `❌ Comando /!${command} desconhecido. Use /!ajuda para ver a lista de comandos.`);
+            sendMessage(bot, `❌ Comando #${command} desconhecido. Use #ajuda para ver a lista de comandos.`);
             break;
     }
 }
@@ -114,13 +115,13 @@ function handleStopCommand(bot, username) {
  */
 function handleMineCommand(bot, username, args) {
     if (isMining) {
-        sendMessage(bot, `⚠️ Já estou minerando. Use /!parar para interromper.`);
+        sendMessage(bot, `⚠️ Já estou minerando. Use #parar para interromper.`);
         return;
     }
 
     const type = args[0] || '1x2';
     if (type !== '1x2' && type !== '3x3') {
-        sendMessage(bot, `❌ Tipo de mineração inválido. Use '1x2' ou '3x3'. Ex: /!minerar 3x3`);
+        sendMessage(bot, `❌ Tipo de mineração inválido. Use '1x2' ou '3x3'. Ex: #minerar 3x3`);
         return;
     }
 
@@ -244,7 +245,7 @@ function handleStatusCommand(bot, username) {
  */
 function handleHelpCommand(bot, username) {
     const helpMessage = `
-        Comandos disponíveis (prefixo /!):
+        Comandos disponíveis (prefixo #):
         - senha <senha>: Autentica para usar comandos.
         - seguir [jogador]: Segue um jogador (padrão: você).
         - parar: Para qualquer ação (seguir, minerar).
