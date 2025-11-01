@@ -1,9 +1,10 @@
+// ===== CONFIGURAÇÃO =====
 const mineflayer = require('mineflayer');
 const express = require('express');
 const http = require('http');
 const socketIO = require('socket.io');
+const { handleChatCommand, stopMining } = require('./bot_commands'); // Adicionado
 
-// ===== CONFIGURAÇÃO =====
 // Lê variáveis de ambiente (Render) ou usa valores padrão
 const CONFIG = {
     minecraft: {
@@ -73,6 +74,13 @@ function criarBot() {
     });
 
     bot.on('chat', (username, message) => {
+        // Processa comandos de chat
+        if (username !== bot.username) {
+            handleChatCommand(bot, username, message);
+        }
+
+        // Envia para o painel web
+
         const cor = username === bot.username ? '#a78bfa' : '#4ade80';
         io.emit('chat', `<span style="color: ${cor};">${username}</span>: ${message}`);
     });
@@ -397,6 +405,9 @@ io.on('connection', (socket) => {
         if (!bot) return;
         try {
             if (acao === 'cavar') {
+                // Para a mineração de túnel se estiver ativa para evitar conflitos
+                stopMining(bot);
+
                 const block = bot.blockAtCursor(4);
                 if (block) {
                     await bot.dig(block);
