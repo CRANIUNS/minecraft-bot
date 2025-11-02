@@ -46,6 +46,15 @@ function carregarPlugins() {
       bot.pathfinder.setMovements(new Movements(bot, mcData));
       enviarStatus();
       
+      // Iniciar visualizador 3D
+      try {
+        const mineflayerViewer = require('prismarine-viewer').mineflayer;
+        mineflayerViewer(bot, { port: 3007, firstPerson: true });
+        console.log('🎥 Visualizador 3D: http://localhost:3007');
+      } catch (err) {
+        console.log('⚠️  Visualizador não disponível (instale: npm install prismarine-viewer)');
+      }
+      
       if (discordClient && discordClient.user) {
         enviarMensagemDiscord('✅ Bot conectado ao servidor Minecraft!');
       }
@@ -98,7 +107,8 @@ function criarBot() {
       minerar();
     }
     
-    if (jogadorSeguindo) {
+    // Atualizar seguimento a cada tick
+    if (jogadorSeguindo && goals) {
       seguirJogador(jogadorSeguindo, goals);
     }
   });
@@ -137,12 +147,17 @@ function seguirJogador(username, goals) {
   const player = bot.players[username];
   if (!player || !player.entity) {
     jogadorSeguindo = null;
+    bot.pathfinder.setGoal(null);
     return;
   }
   
   const { GoalFollow } = goals;
   const goal = new GoalFollow(player.entity, 2);
-  bot.pathfinder.setGoal(goal, true);
+  
+  // Força o pathfinder a atualizar constantemente
+  if (!bot.pathfinder.isMoving() || bot.pathfinder.goal !== goal) {
+    bot.pathfinder.setGoal(goal, true);
+  }
 }
 
 async function minerar() {
@@ -216,7 +231,8 @@ if (CONFIG.discord.enabled) {
     intents: [
       GatewayIntentBits.Guilds,
       GatewayIntentBits.GuildMessages,
-      GatewayIntentBits.MessageContent
+      GatewayIntentBits.MessageContent,
+      GatewayIntentBits.GuildMembers
     ]
   });
 
@@ -401,6 +417,24 @@ app.get('/', (req, res) => {
       border-radius: 12px;
       margin-bottom: 15px;
       text-align: center;
+    }
+    .viewer-btn {
+      background: linear-gradient(135deg, #FF6B6B, #FF8E53);
+      border: none;
+      color: white;
+      padding: 15px 30px;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      margin: 10px auto;
+      display: block;
+      transition: all 0.3s;
+      box-shadow: 0 4px 15px rgba(255,107,107,0.4);
+    }
+    .viewer-btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 20px rgba(255,107,107,0.6);
     }
     .status {
       background: rgba(255,255,255,0.2);
